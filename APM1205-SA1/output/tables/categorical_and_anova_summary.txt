@@ -1,0 +1,39 @@
+[1] "MODEL SUMMARY WITH DUMMY VARIABLES:"
+
+Call:
+lm(formula = Rented_Bike_Count ~ Temperature + Humidity + Wind_Speed + 
+    Seasons, data = bike_data_cleaned)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-1207.0  -309.5   -67.0   192.5  2464.9 
+
+Coefficients:
+               Estimate Std. Error t value Pr(>|t|)    
+(Intercept)    990.8398    26.8726   36.87  < 2e-16 ***
+Temperature     29.3948     0.8777   33.49  < 2e-16 ***
+Humidity        -9.1303     0.2825  -32.33  < 2e-16 ***
+Wind_Speed      44.2877     5.4543    8.12 5.33e-16 ***
+SeasonsSpring -173.1542    15.2520  -11.35  < 2e-16 ***
+SeasonsSummer -216.1412    18.9138  -11.43  < 2e-16 ***
+SeasonsWinter -321.5883    21.3612  -15.05  < 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 482.5 on 8458 degrees of freedom
+Multiple R-squared:  0.4361,	Adjusted R-squared:  0.4357 
+F-statistic:  1090 on 6 and 8458 DF,  p-value: < 2.2e-16
+
+[1] "------------------------------------------"
+[1] "ANOVA RESULTS:"
+Anova Table (Type II tests)
+
+Response: Rented_Bike_Count
+                Sum Sq   Df  F value    Pr(>F)    
+Temperature  261164405    1 1121.658 < 2.2e-16 ***
+Humidity     243286676    1 1044.876 < 2.2e-16 ***
+Wind_Speed    15351185    1   65.931 5.328e-16 ***
+Seasons       94806749    3  135.726 < 2.2e-16 ***
+Residuals   1969341947 8458                       
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1

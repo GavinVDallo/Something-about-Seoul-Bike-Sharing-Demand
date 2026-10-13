@@ -1,0 +1,19 @@
+
+Call:
+lm(formula = Rented_Bike_Count ~ Temperature, data = bike_data_cleaned)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1075.33  -317.49   -57.92   223.01  2488.52 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 347.7708     8.3904   41.45   <2e-16 ***
+Temperature  29.8633     0.4768   62.63   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 531 on 8463 degrees of freedom
+Multiple R-squared:  0.3167,	Adjusted R-squared:  0.3166 
+F-statistic:  3922 on 1 and 8463 DF,  p-value: < 2.2e-16
+

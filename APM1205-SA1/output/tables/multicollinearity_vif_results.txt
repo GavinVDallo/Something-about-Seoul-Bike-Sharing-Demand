@@ -1,0 +1,5 @@
+[1] "VARIANCE INFLATION FACTORS:"
+        Temperature             Holiday            Humidity          Wind_Speed 
+          24.013395            1.758789            1.160558            1.132599 
+Temperature:Holiday 
+          25.219712 

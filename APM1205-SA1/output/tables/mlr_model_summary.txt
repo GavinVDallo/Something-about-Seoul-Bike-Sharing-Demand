@@ -1,0 +1,22 @@
+
+Call:
+lm(formula = Rented_Bike_Count ~ Temperature + Humidity + Wind_Speed, 
+    data = bike_data_cleaned)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1299.48  -306.22   -71.67   186.44  2410.46 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 780.5160    22.2201  35.127  < 2e-16 ***
+Temperature  32.4985     0.4499  72.236  < 2e-16 ***
+Humidity     -8.9793     0.2822 -31.821  < 2e-16 ***
+Wind_Speed   32.2861     5.5150   5.854 4.97e-09 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 493.9 on 8461 degrees of freedom
+Multiple R-squared:  0.409,	Adjusted R-squared:  0.4087 
+F-statistic:  1951 on 3 and 8461 DF,  p-value: < 2.2e-16
+
