@@ -1,0 +1,544 @@
+---
+title: "Untitled"
+output:
+  pdf_document:
+    latex_engine: xelatex
+date: "2026-10-12"
+---
+
+# Part A: Data Loading, Cleaning, and Environment Setup
+
+**1.Real-World Research Problem**
+In dense metropolitan areas like Seoul, urban mobility planners face significant challenges in balancing public transit ecosystems. Over-allocating public shared bikes leads to unnecessary maintenance overhead and cluttered streets, while under-allocating them creates commuter shortages during peak operational windows. Understanding how highly dynamic variables—such as temperature, precipitation, and work schedules—linearly drive fluctuations in bike-rental counts is essential for optimizing logistical allocation and operational efficiency.
+
+**2.Hypothesis for Linear Models**
+*Research Question:*
+Does ambient outdoor temperature significantly predict hourly bike sharing demand when accounting for seasonal shifts?
+*Hypothesis 1(Temperature)*
+H0:B-Temperature==0 (Ambient temperature does not have a linear relationship with the number of rented bikes)
+H1:B-Temperature=!0 (Ambient temperature significantly predicts hourly rented bike demand)
+*Hypothesis 2(Rainfall)*
+H0:B-Rainfall==0 (Hourly rainfall has no linear impact on bicycle rentals)
+H1:B-Rainfall<0 (Increased hourly rainfall significantly decreases bicycle rental demand)
+
+**3.Dataset & Measurement Scales**
+The data consists of 8,760 hourly observations spanning a full calendar year.
+*Variable Name,Variable Type,Measurement Scale, & Description:*
+*Rented Bike Count, Quantitative (Discrete), Ratio, Total number of bikes rented per hour*
+*Temperature, Quantitative (Continuous), Interval, Ambient outdoor temperature in degrees Celsius*
+*Humidity, Quantitative (Continuous), Ratio, Air humidity percentage*
+*Rainfall, Quantitative (Continuous), Ratio, Hourly rainfall amount measured in millimeters*
+*Seasons, Categorical (Nominal), Nominal (4 Levels), Meteorological season*
+*Holiday, Categorical (Binary), Nominal (2 Levels), Calendar day classification*
+
+```{r setup-analysis, include=TRUE, warning=FALSE, message=FALSE}
+
+# Load required library
+library(tidyverse)
+
+# 1. Setup Repository Directory Structure automatically
+dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
+dir.create("output/figures", recursive = TRUE, showWarnings = FALSE)
+
+# 2. Load the dataset using correct encoding to handle special characters
+file_path <- "~/data/SeoulBikeData.csv"
+
+if (!file.exists(file_path)) {
+  stop(paste("File not found at path:", file_path, "\nPlease double-check your folder directory connection."))
+}
+
+bike_data <- read.csv(file_path, fileEncoding = "latin1", check.names = FALSE)
+
+# 3. Rename columns to clean, programmatic names without special characters
+bike_data <- bike_data %>%
+  rename(
+    Rented_Bike_Count = `Rented Bike Count`,
+    Hour = `Hour`,
+    Temperature = `Temperature(°C)`,
+    Humidity = `Humidity(%)`,
+    Wind_Speed = `Wind speed (m/s)`,
+    Visibility = `Visibility (10m)`,
+    Dew_Point_Temp = `Dew point temperature(°C)`,
+    Solar_Radiation = `Solar Radiation (MJ/m2)`,
+    Rainfall = `Rainfall(mm)`,
+    Snowfall = `Snowfall (cm)`,
+    Seasons = `Seasons`,
+    Holiday = `Holiday`,
+    Functioning_Day = `Functioning Day`
+  )
+
+# 4. Check for Missing Data 
+missing_summary <- colSums(is.na(bike_data))
+print("--- Missing Values Per Column Checking ---")
+print(missing_summary)
+
+# 5. Data Type Transformations & Record Filtering
+bike_data_cleaned <- bike_data %>%
+  mutate(
+    Seasons = as.factor(Seasons),
+    Holiday = as.factor(Holiday),
+    Functioning_Day = as.factor(Functioning_Day)
+  ) %>%
+  filter(Functioning_Day == "Yes") # Exclude non-operational hours
+
+# 6. Verify and Save Verification Logs
+print(paste("Rows remaining after cleaning:", nrow(bike_data_cleaned)))
+
+# Save basic data structure summary to your output/tables folder
+sink("output/tables/data_structure_summary.txt")
+print("Cleaned Dataset Structure Profile:")
+glimpse(bike_data_cleaned)
+print("------------------------------------------")
+print("Summary Characteristics:")
+summary(bike_data_cleaned)
+sink()
+```
+
+# Part B: Exploratory Data Analysis (EDA)
+
+```{r exploratory-data-analysis, include=TRUE, warning=FALSE, message=FALSE}
+
+# 1. Generate descriptive statistics for quantitative variables
+eda_summary <- bike_data_cleaned %>%
+  select(Rented_Bike_Count, Temperature, Humidity, Wind_Speed, Rainfall, Snowfall) %>%
+  summary()
+
+print("--- Quantitative Variables Summary Statistics ---")
+print(eda_summary)
+
+# 2. Save descriptive statistics table to text file
+sink("output/tables/quantitative_summary_statistics.txt")
+print(eda_summary)
+sink()
+
+# 3. Visualization 1: Scatterplot of Temperature vs Rented Bike Count
+# This checks the primary continuous linear relationship
+p1 <- ggplot(bike_data_cleaned, aes(x = Temperature, y = Rented_Bike_Count)) +
+  geom_point(alpha = 0.2, color = "darkblue") +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  labs(
+    title = "Figure 1: Bike Rental Demand vs Ambient Temperature",
+    x = "Temperature (°C)",
+    y = "Hourly Rented Bike Count"
+  ) +
+  theme_minimal()
+
+ggsave("output/figures/figure1_temp_vs_demand.png", plot = p1, width = 7, height = 5)
+
+# 4. Visualization 2: Boxplot of Seasonal Bike Rental Distributions
+# This helps inspect patterns and check for extreme outliers across categories
+p2 <- ggplot(bike_data_cleaned, aes(x = Seasons, y = Rented_Bike_Count, fill = Seasons)) +
+  geom_boxplot() +
+  labs(
+    title = "Figure 2: Distribution of Hourly Bike Rentals by Season",
+    x = "Season",
+    y = "Hourly Rented Bike Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave("output/figures/figure2_seasonal_distributions.png", plot = p2, width = 7, height = 5)
+
+print("Part B charts and tables have been successfully generated and saved!")
+```
+*#For the temperature, it is observed to have a minimum -17.8 degrees celsius to a maximum 39.4 degrees celsius. The min temp with only 2 rented bike count shows how unsuitable for users to use any bike including a rented one in a cold weather. As it gets warmer, it gets the higher rented bike count due to how suitable for users to use with enough heat to move on. Where the rented bike count strongly rise is at 20 to 30 degrees celsius as it gets warmer moving from freezing levels.*
+*It's not just the temperature, even the different season affects the rented bike counts. For winter season, the demand is low for the rented bike count due to how unsuitable to roam or move with any bike due to how cold it is. Although the summer and autumn has the highest rented bike count not just with good heat for users, but also shows how high demand is for those two seasons.*
+*We have a transformations note here...The respons variable (Rented_Bike_Count) is strongly right-skewed with a heavy concentration near 0 during bad weather conditions, which might require a transformation check down the line in our diagnostics phase.*
+
+# Part C: Simple Linear Regression
+
+```{r simple-linear-regression-final, include=TRUE, warning=FALSE, message=FALSE}
+
+# 1. Fit the simple linear regression model (Task 8)
+slr_model <- lm(Rented_Bike_Count ~ Temperature, data = bike_data_cleaned)
+
+# 2. Print out the full statistical summary table on screen
+print("--- STATISTICAL MODEL SUMMARY ---")
+summary(slr_model)
+
+# 3. Save model summary output to your tables directory
+sink("output/tables/slr_model_summary.txt")
+print(summary(slr_model))
+sink()
+
+# 4. Generate the required model plot (Task 11)
+p_slr <- ggplot(bike_data_cleaned, aes(x = Temperature, y = Rented_Bike_Count)) +
+  geom_point(alpha = 0.15, color = "steelblue") +
+  geom_smooth(method = "lm", color = "firebrick", size = 1.2, se = TRUE) +
+  labs(
+    title = "Fitted Simple Linear Regression Line",
+    subtitle = "Model Formula: Predicted Demand = 329.13 + 29.08 * Temperature",
+    x = "Ambient Temperature (°C)",
+    y = "Hourly Rented Bike Count"
+  ) +
+  theme_minimal(base_size = 12)
+
+# Save the visualization directly into your figures folder
+ggsave("output/figures/figure3_fitted_slr_model.png", plot = p_slr, width = 7, height = 5)
+
+# 5. Display the plot right inside your R Markdown report file
+plot(p_slr)
+```
+
+**Interpretation of the Estimated Regression Coefficients**
+Based on the linear model equation(y=B0+B1x): Rented Bike Count = 329.13 + 29.08 x (Temperature)
+*Intercept(B0=329.13)*
+When the ambient temperature is exactly o degrees celsius, the model predicts a baseline average demand of 329 rented bikes per hour.
+*Slope Coefficient(B1=29.08)*
+For every 1 degree celsius increase in outdoor temperature, the hourly demand for shared bikes is expected to increase by an average of 29.08 additional rentals, holding all other conditions constant. This positive sign indicates a strong direct correlation between warmer weather conditions and consumer usage.
+
+**Interpretation of R^2 and Assessment of Model Usefulness**
+*Interpretation of R^2 (R^2=0.2913)*
+The coefficient of determination indicates that approximately 29.13% of the total variance observed in hourly shared bike rental demand is explained by changes in ambient outdoor temperature alone.
+*Assessment of Overall Usefulness:*
+What's good here is that the model is staistically useful due to overall model F-statistic matches a p-value < 2.2 x 10^-16. And we can reject the null hypothesis with extreme confidence. This shows that the temperature is unquestionably a significant driver of bike demand. However, there the bad thing about the model, it is practically incomplete due to R^2 = 29% more than 70.87% of the variation in bike rental demand remains unexplained. What's missing from this single-variable view are likely rain, work holidays, and humidity as observed from the model. This needs a relialbe operational prediction that requires the transition to a multiple linear regression model.
+
+
+# Part D: Multiple Linear Regression
+
+```{r multiple-linear-regression, include=TRUE, warning=FALSE, message=FALSE}
+
+# 1. Fit the multiple linear regression model (Task 12)
+mlr_model <- lm(Rented_Bike_Count ~ Temperature + Humidity + Wind_Speed, data = bike_data_cleaned)
+
+# 2. Display the full statistical output table on screen
+print("--- MULTIPLE LINEAR REGRESSION MODEL SUMMARY ---")
+summary(mlr_model)
+
+# 3. Save model summary output to your tables directory
+sink("output/tables/mlr_model_summary.txt")
+print(summary(mlr_model))
+sink()
+```
+
+**Rationale for Selecting the Predictors**
+For the rationale, we are building a more realistic model, which we selected temperature, humidity, and wind speed.
+*Temperature*
+This was mentioned and used in part c, and can still be used for this part due to ambient warmth as the primary driver of outdoor human activity.
+*Humidity*
+The factor to note is that the high humidity levels create sticky, uncomfortable riding conditions or signal heavy cloud cover, which typically deters commuters from cycling.
+*Wind Speed*
+When strong headwind occurs at certain events, it physically increase the effort required to pedal a bicycle, which serves as a practical deterrent for casual riders.
+
+**Interpretation of Selected Regression Coefficients**
+*Temperature (B1=28.11)*
+The temperature hold humidity and wind speed constant, for every 1 degree celsius increase by more heat counts 28.11 rented bikes per hour on average, and warmth is the main positive driver in affecting rented bike counts.
+*Humidity (B2=-6.21)*
+The humidity holds temperature and wind speed constant, every 1% increase in relative humidity is associated with an average decrease of 6.21 rented bikes per hour, which this huge negative factor that made it worse by • muggier or more overcast conditions compress rental activity.
+*Wind Speed (B3=20.37)*
+The wind speed holds temperature and humidity constant, every speed increase for the wind speed with just every 1m/s increase of 20.37 rented bikes per hour on average. Despite how desruptive the wind is, it is also the sign of having clear skies.
+
+**Overall Model Evaluation**
+*Multiple R^2 (=0.3414)*
+From the 3 weather predictors combines, it is approximately 34.14% of the total variance in hourly bike sharing demand.
+*Adjusted R^2 (=0.3411)*
+For the adjustment, the sample size is very large and the adjusted R^2 is almost identical to multiple R^2. It may seem like it is just inflating the model mathematically but this is confirmed that our added variables are providing genuine explanatory value.
+*Overall F-Test*
+The F statistic yields the p-value < 2.2 x 10^-16 and this value is much lower than our significance level, we reject the null hypothesis and conclude that our multi-variable framework is significantly better at explaining bike demand than a baseline intercept-only model.
+
+
+# Part E: Statistical Inference for Regression
+
+```{r statistical-inference, include=TRUE, warning=FALSE, message=FALSE}
+
+# 1. Conduct hypothesis tests for regression coefficients (Task 16)
+# This displays the estimated coefficients, standard errors, t-values, and p-values
+model_coefficients <- summary(mlr_model)$coefficients
+print("--- Individual t-Test Results ---")
+print(model_coefficients)
+
+# 2. Construct 95% confidence intervals for parameters (Task 17)
+model_intervals <- confint(mlr_model, level = 0.95)
+print("--- 95% Confidence Intervals ---")
+print(model_intervals)
+
+# 3. Save inference results to your tables folder
+sink("output/tables/statistical_inference_results.txt")
+print("COEFFICIENTS & P-VALUES:")
+print(model_coefficients)
+print("------------------------------------------")
+print("95% CONFIDENCE INTERVALS:")
+print(model_intervals)
+sink()
+```
+
+**Hypothesis testing for regression coefficients**
+Here we test the null hypothesis about no linear effect against the alternative hypothesis that is about significant linear effect.
+*Temperature*
+Checking from the t-statistic, it is extremely large, and it's corresponding p-value < 2.2 x 10^-16 which is lower than the significant value a=0.05, the null hypothesis is rejected and temperature is a highly significant predictor of bike demand.
+*Humidity*
+Checking the t-statistic, it is highly negative with a p-value < 2.2 x 10^-16. Null hypothesis is rejected and humidity has a statistically significant negative impact on rental demand.
+*Wind Speed*
+Checking the t-statistic, it matches the p-value < 2.2 x 10^-16. Null hypothesis is rejected and wind speed is a statistically significant positive predictor within this model.
+
+**Confidence Interval Construction & Interpretation**
+Here, we focus the 95% confidence interval to define the range of plausible values for the true population parameters
+*Temperature CI(=[26.96,29.26])*
+For every 1 degree celsius increase in temperature, the true average increase in hourly bike demand is between 26.96 and 29.26 bikes, holding other variables constant.
+*Humidity CI(=[-6.49,-5.93])*
+For every 1% increase in relative humidity, the true average decrease in hourly bike demand is between 5.93 and 6.49 bikes, holding other variables constant.
+
+**Statistical Significance vs. Practical Significance**
+*Statistical Significance*
+It shows whether an observed effect is real or just a random fluke and since the dataset has a massive sample size, our standard errors are tiny. And this makes almost every variable look "highly statistically significant" (p<0.05) even if its actual real-world impact is small.
+*Practical Significance*
+This measures the actual magnitude of the effect in the real world. For the two variables humidity and temperature, a 1% change in humidity is statistically significant a drop of just 6 bikes across an entire city is practically negligible for fleet logistics and a 10 degree ceslius swing in temperature shifts demand by nearly 280 bikes per hour, which has massive practical significance for bike distribution planning.
+
+
+# Part F: Matrix Form and Least-Squares Theory
+
+```{r matrix-formulation, include=TRUE, warning=FALSE, message=FALSE}
+
+# 1. Select a small subset of the data for computational demonstration (Task 21)
+# We will use the first 5 rows of our cleaned dataset
+subset_data <- head(bike_data_cleaned, 5)
+
+# 2. Construct the Response Vector (y)
+y_vector <- as.matrix(subset_data$Rented_Bike_Count)
+
+# 3. Construct the Design Matrix (X) - Must explicitly include a column of 1s for the intercept
+X_matrix <- cbind(Intercept = 1, as.matrix(subset_data[, c("Temperature", "Humidity", "Wind_Speed")]))
+
+print("--- DEMONSTRATION SUBSET (First 5 Rows) ---")
+print("Response Vector (y):")
+print(y_vector)
+print("\nDesign Matrix (X):")
+print(X_matrix)
+
+# 4. Perform Manual Least-Squares Estimation using Matrix Math: beta_hat = (X^T * X)^(-1) * X^T * y
+X_transpose <- t(X_matrix)
+XTX <- X_transpose %*% X_matrix
+XTX_inverse <- solve(XTX) # solve() computes the matrix inverse in R
+XT_y <- X_transpose %*% y_vector
+
+beta_hat_matrix <- XTX_inverse %*% XT_y
+
+print("\n--- MANUALLY CALCULATED COEFFICIENTS (beta_hat) ---")
+print(beta_hat_matrix)
+
+# 5. Fit an automated linear model on the SAME subset to verify consistency (Task 22)
+subset_lm <- lm(Rented_Bike_Count ~ Temperature + Humidity + Wind_Speed, data = subset_data)
+
+print("\n--- R SOFTWARE AUTOMATED COEFFICIENTS (lm) ---")
+print(coef(subset_lm))
+```
+
+**The selected multiple regression model can be expressed in matrix notation as:**
+
+$$y = X\beta + \varepsilon$$
+
+**Where the expanded structural linear matrix components are defined as:**
+
+$$\begin{bmatrix} y_1 \\ y_2 \\ \vdots \\ y_n \end{bmatrix} = \begin{bmatrix} 1 & x_{11} & x_{12} & x_{13} \\ 1 & x_{21} & x_{22} & x_{23} \\ \vdots & \vdots & \vdots & \vdots \\ 1 & x_{n1} & x_{n2} & x_{n3} \end{bmatrix} \begin{bmatrix} \beta_0 \\ \beta_1 \\ \beta_2 \\ \beta_3 \end{bmatrix} + \begin{bmatrix} \epsilon_1 \\ \epsilon_2 \\ \vdots \\ \epsilon_n \end{bmatrix}$$
+
+**Role Explanations of Matrix Components**
+$y$
+
+(Response Vector):An n x 1 column vector containing the observed values of our dependent variable (Rented_Bike_Count) for each hour.
+
+$X$
+
+(Design Matrix):An n x 4 matrix. The first column is filled entirely with 1s to calculate the intercept beta 0. The remaining three columns hold the quantitative predictor data (Temperature, Humidity, Wind_Speed)
+
+$$beta$$
+(Parameter Vector):A 4 x 1 column vector of the unknown population regression coefficients (beta0, beta1, beta2, beta3) that describe the true underlying relationships. 
+
+$$\varepsilon$$
+(Residual/Error Vector): An n x 1 column vector capturing the random variations or factors not covered by our weather variables for each specific hour.
+
+**Connection Between Matrix Formulation and Software Results**
+When running a script, the manual matrix calculations and the automated software output will print the exact same numbers. This happens because the automated function in R does not use a black box. Under the hood, R converts your formula into a design matrix and uses QR decomposition to solve the identical algebraic optimization problem: minimizing the sum of squared residuals. This demonstration proves that your programmatic results are fundamentally tied to classic least-squares theory.
+
+
+# Part G: Dummy Variables and ANOVA
+
+```{r dummy-variables-anova, include=TRUE, warning=FALSE, message=FALSE}
+
+# 1. Fit a model incorporating the categorical Seasons variable (Task 23)
+# R handles dummy-variable encoding under the hood when a variable is a factor
+categorical_model <- lm(Rented_Bike_Count ~ Temperature + Humidity + Wind_Speed + Seasons, data = bike_data_cleaned)
+
+print("--- MULTIPLE REGRESSION MODEL WITH SEASONS ---")
+summary(categorical_model)
+
+# 2. Conduct a formal Type II ANOVA F-Test for the Seasons predictor (Task 25)
+library(car)
+anova_results <- Anova(categorical_model, type = "II")
+
+print("\n--- ANOVA F-TEST RESULTS ---")
+print(anova_results)
+
+# 3. Save summary outputs to the tables directory
+sink("output/tables/categorical_and_anova_summary.txt")
+print("MODEL SUMMARY WITH DUMMY VARIABLES:")
+print(summary(categorical_model))
+print("------------------------------------------")
+print("ANOVA RESULTS:")
+print(anova_results)
+sink()
+```
+
+**Reference Category Identification & Coefficient Interpretations**
+In R, it is already set in by default in alphabetical order. Taking a look at this dataset, SeasonsAutumn is chosen as the Reference Category. What it means is that the baseline effect is absorbed into the main model intercept, and all other seasonal coefficients are evaluated as differences relative to Autumn.
+*SeasonSpring(B=-268.80)*
+Holding all weather factors constant, the bike demand in Spring is expected to be an average of 268.80 rentals lower per hour compared to Autumn.
+*SeasonsSummer(B=-104.41)*
+Holding weather factors constant, the bike demand in Summer is expected to be an average of 101.41 rentals lower per hour compared to Autumn.
+*SeasonsWinter(B=-265.41)*
+Holding weather factors constant, the bike demand in Winter is expected to drop by an average of 265.41 rentals per hour compared to Autumn.
+
+**ANOVA F-Test Evaluation**
+For the evaluation, after looking at the results printout, the row for seasons measures whether there is an overall seasonal difference across all levels. The resulting F-statistics is large and returns a p-value < 2 x 10^-16. Since this is far below a=0.05, null hypothesis is rejected and the categorical factor seasons has a highly significant effect on bike demand.
+
+**Connection Within the General Linear Model Framework**
+The dummy-variable regression and ANOVA are not two different types of statistics; they are simply two sides of the exact same coin within the General Linear Model (GLM) framework.
+*Regression*
+This is focused on individual level that shifts relative to a single baseline group, estimating specific slopes.
+*ANOVA*
+This has the looks that has the exact same matrix variables but groups those separate dummy slopes together to test their collective significance using an F-Ratio. •  Both approaches run on the exact same underlying least-squares matrix math.
+
+
+# Part H: Two-Way ANOVA and Interactions
+
+```{r interaction-analysis, include=TRUE, warning=FALSE, message=FALSE}
+
+# 1. Fit the interaction model (Task 27 & 28)
+# The asterisk (*) automatically includes individual effects and their interaction
+interaction_model <- lm(Rented_Bike_Count ~ Temperature * Holiday + Humidity + Wind_Speed, data = bike_data_cleaned)
+
+print("--- INTERACTION MODEL COEFFICIENTS ---")
+summary(interaction_model)
+
+# 2. Save model summary output to your tables directory
+sink("output/tables/interaction_model_summary.txt")
+print(summary(interaction_model))
+sink()
+
+# 3. Provide an appropriate visualization of the interaction effect (Task 30)
+p_interaction <- ggplot(bike_data_cleaned, aes(x = Temperature, y = Rented_Bike_Count, color = Holiday)) +
+  geom_point(alpha = 0.1, aes(group = Holiday)) +
+  geom_smooth(method = "lm", formula = y ~ x, size = 1.2, se = FALSE) +
+  scale_color_manual(values = c("No Holiday" = "steelblue", "Holiday" = "firebrick")) +
+  labs(
+    title = "Figure 4: Temperature Effect by Calendar Day Type",
+    subtitle = "Interaction Evaluation: Slopes for Holiday vs No Holiday",
+    x = "Ambient Temperature (°C)",
+    y = "Hourly Rented Bike Count",
+    color = "Day Classification"
+  ) +
+  theme_minimal(base_size = 12)
+
+# Save the visualization directly into your figures folder
+ggsave("output/figures/figure4_interaction_effect.png", plot = p_interaction, width = 7, height = 5)
+
+# Display the plot inside your report
+plot(p_interaction)
+```
+
+**Rationale and Interaction Test Hypothesis**
+Based on the dataset and the graph here, what is mentioned here is the temperature and the holidays/non-holidays. We go with the term Temperature:Holiday.
+*Hypothesis:*
+Hypothesis is mentioned again, this time without the null and alternative hypothesis here. Here, what is observed here is that on standard workdays, temperature spikes match stiff commuter rushes during morning/evening commute windows. On holidays, it goes differently.The bike demand transitions to leisurely, recreational use spread evenly across afternoon warm periods, which would show a different slope.
+*Statistical Significance:*
+Statistical significance is mentioned again, this time to evaluate here. The (Temperature:Holiday/No Holiday) is evaluated about interaction row in the summary printout. If the p-value is less than a=0.05, • it proves that the slope varies significantly between holidays and non-holidays.
+
+**Real-World Interpretation of the Interaction Effect**
+*Baseline Group:*
+The setting for this is that the baseline group is Holiday. The main Temperature • coefficient shows how demand changes on a Holiday for each 1 degree celsius increase.
+*The Interaction Adjustment:*
+We have different slopes, which is the coefficient next to (Temperature:Holiday/No Holiday). • A positive interaction coefficient means the demand curve is steeper on standard work days. This indicates that rising temperatures cause public bicycle demand to climb at a much faster rate on active business days than on leisure holidays.
+
+**Visualization of the Interaction**
+There's this image file called figure4_interaction_effect.png that is saved after graphing. This image here shows two distinct lines that are color coded to be red and blue and thay are not completely parallel. They just intersect or possess distinctly mismatched slants—it serves as clear visual evidence of an active interaction effect modifying your predictors.
+
+
+# Part I: Model Diagnostics and Validation
+
+```{r model-diagnostics, include=TRUE, warning=FALSE, message=FALSE}
+
+# Set up graphic parameters to save a 2x2 multi-panel diagnostic plot layout
+png("output/figures/figure5_diagnostic_plots.png", width = 800, height = 800)
+par(mfrow = c(2, 2))
+
+# 1. Generate the standard four diagnostic plots on our interaction model (Task 32)
+plot(interaction_model)
+
+# Reset graphics state
+dev.off()
+
+# Display the diagnostic plots inside the R Markdown document console
+par(mfrow = c(2, 2))
+plot(interaction_model)
+par(mfrow = c(1, 1)) # Reset to default layout
+
+# 2. Check for Multicollinearity using Variance Inflation Factors (VIF)
+library(car)
+vif_values <- vif(interaction_model)
+print("--- Variance Inflation Factors (VIF) ---")
+print(vif_values)
+
+# 3. Save VIF logs to tables directory
+sink("output/tables/multicollinearity_vif_results.txt")
+print("VARIANCE INFLATION FACTORS:")
+print(vif_values)
+sink()
+```
+
+**Evaluation of Major Assumptions & Violations**
+*Linearity (Residuals vs Fitted Plot):*
+The red line running through the center should ideally be flat at zero. In this dataset, the red line exhibits a slight bend or curve. This suggests mild non-linearity, likely because bike demand drops off at extremely hot temperatures (above 35 degrees celsius)
+*Independence*
+The residuals (errors) of any two observations must be entirely uncorrelated. In other words, an unexpected spike in bike rentals during one hour should not influence or help predict the error in the following hour.
+*Constant Variance / Homoscedasticity (Scale-Location Plot):*
+The spread of residuals changes visibly as fitted values increase. It forms a distinct funnel or wedge shape, indicating heteroscedasticity. This is a very common issue with count data (like bike rentals), where variance tends to scale with volume.
+*Normality of Residuals (Normal Q-Q Plot):*
+The points in the middle follow the diagonal dashed baseline perfectly, but they curve away noticeably at both the upper and lower ends. This indicates that the residuals are non-normal, displaying heavy tails because count data cannot fall below zero.
+
+**Influential Observations and Outliers**
+What's inlfuencial from  Residuals vs Leverage Plot, is what is displayed is the Cook's Distance that contours to screen for highly influential data points.In this large dataset, while there are several extreme outliers, none of the individual observations cross the critical Cook's Distance threshold of 1.0. This means no single observation is disproportionately skewing your regression estimates on its own.
+
+**Proposed Corrective Procedures**
+Here's what should be proposed with the following corrective steps in the final report since the diagnostics reveal active heteroscedasticity and non-normal residuals
+*Logarithmic or Square-Root Transformation:*
+This has to apply the transformation to the root variable like using the log(Rented_Bike_Count + 1), which this can help 1. stabilize variance and make the residuals more symmetric.
+*Generalized Linear Models (GLM):*
+This has to transition from the standard Ordinary Least Squares (OLS) to a Poisson or Negative Binomial regression framework is often the best solution for count-based data like bike demand.
+
+#Part J. Final Model and Statistical Communication 
+
+```{r final-model-betas, include=TRUE, warning=FALSE, message=FALSE}
+# Fit the final selected interaction model (Task 35)
+final_model <- lm(Rented_Bike_Count ~ Temperature * Holiday + Humidity + Wind_Speed, data = bike_data_cleaned)
+
+# Extract coefficients cleanly without causing latex errors
+model_coefs <- coef(summary(final_model))
+rownames(model_coefs) <- c("Beta_0 (Intercept)", "Beta_1 (Temperature)", "Beta_2 (HolidayNo Holiday)", 
+                            "Beta_3 (Humidity)", "Beta_4 (Wind_Speed)", "Beta_5 (Interaction: Temp * Holiday)")
+
+print("--- FINAL CHOSEN MODEL WITH PARAMETER LABELS ---")
+print(model_coefs[, c("Estimate", "Std. Error", "t value", "Pr(>|t|)")])
+```
+
+**Identification and Justification of the Final Model**
+Here is the interactiion model developed in H:
+
+# 1. Fit the final selected interaction model (Task 35)
+final_model <- lm(Rented_Bike_Count ~ Temperature * Holiday + Humidity + Wind_Speed, data = bike_data_cleaned)
+
+# 2. Extract coefficients and format with Beta symbols
+model_coefs <- summary(final_model)$coefficients
+rownames(model_coefs) <- c("Beta_0 (Intercept)", "Beta_1 (Temperature)", "Beta_2 (HolidayNo Holiday)", 
+                            "Beta_3 (Humidity)", "Beta_4 (Wind_Speed)", "Beta_5 (Interaction: Temp * Holiday)")
+
+# 3. Print the beautifully labeled final coefficients
+print("--- FINAL CHOSEN MODEL WITH PARAMETER LABELS ---")
+print(model_coefs[, c("Estimate", "Std. Error", "t value", "Pr(>|t|)")])
+
+*Justification*
+While the simple model in Part C looked only at temperature, moving to a multiple regression framework significantly increased our explanatory power (R^2 jumped from 29% to over 34%). Introducing the interaction term (Temperature:Holiday) proved that the rate at which bike demand increases with warmth is completely different on active workdays compared to calendar holidays. This addition is highly statistically significant and prevents our model from outputting generalized, flawed forecasts.
+
+**Non-Technical Executive Summary for Stakeholders**
+This is somewhere in urban areas of Seoul, looking for the urban mobility, weather conditions, and work calendar. What revealed from the analysis is that ambient temperature is the single strongest factor pushing bike rentals upward; as days warm up, city commuters choose cycling at a rapidly accelerating rate. But the problem here is that the temperature effect behaves completely differently depending on the day of the week. During regular workdays, rising temperature cause a sudden spike in morning and evening about how many people rent for commute. On official holidays, it is different, there's the upward surge flattens out significantly. And also high humidity acts as a major deterrent, systematically lowering bicycle usage across the city. Wind speeds show a minor positive correlation, likely indicating that commuters prefer clear, breezy skies over stagnant, overcast weather conditions.
+
+**Final Conclusion Answering the Research Question**
+For the conclusion, after data procedures, the answer here is that ambient outdoor temperature did significantly predict hourly bike sharing demand when accounting for seasonal shifts. Operational efficiency, logistics managers can be maximized by dynamically scale fleet deployments upward as temperatures rise, preparing for heavy commuter congestion on non-holiday business days.And the transit management should expect an occuring of heavily reduced demand during high-humidity windows and rain events, moving operational focus toward off-peak fleet maintenance.
